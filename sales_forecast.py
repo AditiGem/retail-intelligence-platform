@@ -43,148 +43,196 @@ print(f"   Total revenue: ${df['total_revenue'].sum():,.2f}")
 # CREATE DAY_OF_WEEK IN ORIGINAL DATAFRAME
 # ============================================
 
-# Add day_of_week column to original df (FIX #1)
+# Add day_of_week column to original df
 df['day_of_week'] = df['metric_date'].dt.dayofweek
 df['day_name'] = df['metric_date'].dt.day_name()
 
 print(f"   Added day_of_week column to dataframe")
 
 # ============================================
-# FEATURE ENGINEERING FUNCTION
+# FEATURE ENGINEERING FUNCTION (LEAK-FREE)
 # ============================================
 
 def prepare_features(data):
-    """Prepare features for training"""
-    data = data.copy()
-    
-    # Time features (using existing day_of_week column)
+    """
+    Leak-free feature engineering.
+    All lag/rolling features use only PAST values (shift > 0).
+    No global aggregates.
+    """
+    data = data.copy().sort_values('metric_date').reset_index(drop=True)
+
+    # Time features (known in advance — safe)
+    data['day_of_week']  = data['metric_date'].dt.dayofweek
     data['day_of_month'] = data['metric_date'].dt.day
-    data['month'] = data['metric_date'].dt.month
-    data['is_weekend'] = (data['day_of_week'] >= 5).astype(int)
-    
-    # Lag features (previous days)
-    data['prev_day_revenue'] = data['total_revenue'].shift(1)
+    data['month']        = data['metric_date'].dt.month
+    data['is_weekend']   = (data['day_of_week'] >= 5).astype(int)
+
+    # Lag features (only past)
+    data['prev_day_revenue']  = data['total_revenue'].shift(1)
     data['prev_2day_revenue'] = data['total_revenue'].shift(2)
     data['prev_3day_revenue'] = data['total_revenue'].shift(3)
     data['prev_7day_revenue'] = data['total_revenue'].shift(7)
-    
-    # Rolling averages
-    data['rolling_3day_mean'] = data['total_revenue'].rolling(window=3).mean()
-    data['rolling_7day_mean'] = data['total_revenue'].rolling(window=7).mean()
-    
-    # Day average (using day_of_week from data that already has it)
-    day_avg = data.groupby('day_of_week')['total_revenue'].transform('mean')
-    data['day_avg_revenue'] = day_avg
-    
-    # Drop NaN rows
-    data = data.dropna()
-    
+
+    # Rolling means — shift(1) first so today is excluded
+    data['rolling_3day_mean'] = data['total_revenue'].shift(1).rolling(3).mean()
+    data['rolling_7day_mean'] = data['total_revenue'].shift(1).rolling(7).mean()
+
+    # Day-of-week average from PAST only (expanding mean per weekday)
+    data['day_avg_revenue'] = (
+        data.groupby('day_of_week')['total_revenue']
+            .transform(lambda s: s.shift(1).expanding().mean())
+    )
+
+    data = data.dropna().reset_index(drop=True)
     return data
 
 # ============================================
-# PREPARE TRAINING DATA
+# PREPARE TRAINING DATA & TIME-BASED SPLIT
 # ============================================
 
 print("\nPreparing training data...")
 featured_df = prepare_features(df)
 
-# Define features for training
 feature_cols = [
     'day_of_week', 'day_of_month', 'month', 'is_weekend',
-    'prev_day_revenue', 'prev_2day_revenue', 'prev_3day_revenue', 'prev_7day_revenue',
-    'rolling_3day_mean', 'rolling_7day_mean', 'day_avg_revenue'
+    'prev_day_revenue', 'prev_2day_revenue', 'prev_3day_revenue',
+    'prev_7day_revenue', 'rolling_3day_mean', 'rolling_7day_mean',
+    'day_avg_revenue'
 ]
 
 X = featured_df[feature_cols]
 y = featured_df['total_revenue']
 
-# Split data
+# TIME-BASED SPLIT (no shuffle — order preserved)
 split_idx = int(len(X) * 0.8)
-X_train = X[:split_idx]
-X_test = X[split_idx:]
-y_train = y[:split_idx]
-y_test = y[split_idx:]
+X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
+y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
-print(f"   Training samples: {len(X_train)}")
-print(f"   Test samples: {len(X_test)}")
+print(f"Train: {len(X_train)} samples")
+print(f"Test:  {len(X_test)} samples")
+print(f"Train dates: {featured_df['metric_date'].iloc[0].date()} → {featured_df['metric_date'].iloc[split_idx-1].date()}")
+print(f"Test dates:  {featured_df['metric_date'].iloc[split_idx].date()} → {featured_df['metric_date'].iloc[-1].date()}")
 
 # ============================================
-# TRAIN MODEL
+# TRAIN MODEL & EVALUATE METRICS
 # ============================================
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import json
 
 print("\nTraining Random Forest model...")
-model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
+model = RandomForestRegressor(
+    n_estimators=200,
+    max_depth=12,
+    random_state=42
+)
 model.fit(X_train, y_train)
-print("   Model training complete!")
-
-# ============================================
-# EVALUATE MODEL
-# ============================================
 
 y_train_pred = model.predict(X_train)
-y_test_pred = model.predict(X_test)
+y_test_pred  = model.predict(X_test)
 
 train_r2 = r2_score(y_train, y_train_pred)
-test_r2 = r2_score(y_test, y_test_pred)
-test_mae = mean_absolute_error(y_test, y_test_pred)
+test_r2  = r2_score(y_test,  y_test_pred)
+mae      = mean_absolute_error(y_test, y_test_pred)
+rmse     = np.sqrt(mean_squared_error(y_test, y_test_pred))
 
-print(f"\n   Training R2 Score: {train_r2:.3f}")
-print(f"   Test R2 Score: {test_r2:.3f}")
-print(f"   Test MAE: ${test_mae:,.2f}")
+mae_pct  = (mae  / y_test.mean()) * 100
+rmse_pct = (rmse / y_test.mean()) * 100
 
-if test_r2 > 0.7:
-    print("   Model quality: GOOD")
-elif test_r2 > 0.5:
-    print("   Model quality: REASONABLE")
+print(f"\n{'='*60}")
+print("MODEL PERFORMANCE")
+print(f"{'='*60}")
+print(f"Train R² : {train_r2:.3f}")
+print(f"Test  R² : {test_r2:.3f}")
+print(f"MAE      : ${mae:,.2f}  ({mae_pct:.1f}%)")
+print(f"RMSE     : ${rmse:,.2f} ({rmse_pct:.1f}%)")
+print(f"Train/Test R² gap: {train_r2 - test_r2:.3f}")
+
+if test_r2 > 0.95:
+    print("⚠️  Test R² > 0.95 — verify no leakage remains")
+elif test_r2 > 0.6:
+    print("✅ Model quality: GOOD")
+elif test_r2 > 0.4:
+    print("✅ Model quality: REASONABLE")
 else:
-    print("   Model quality: NEEDS IMPROVEMENT")
+    print("⚠️  Model quality: NEEDS IMPROVEMENT")
 
 # ============================================
-# FEATURE IMPORTANCE
+# SAVE METRICS TO JSON
 # ============================================
 
-print("\nTop 5 Most Important Features:")
-importance_df = pd.DataFrame({
-    'feature': feature_cols,
-    'importance': model.feature_importances_
-}).sort_values('importance', ascending=False)
+feature_importances = dict(
+    sorted(
+        zip(feature_cols, model.feature_importances_.tolist()),
+        key=lambda x: -x[1]
+    )
+)
+feature_importances = {k: round(v, 4) for k, v in feature_importances.items()}
 
-for i in range(min(5, len(importance_df))):
-    row = importance_df.iloc[i]
-    print(f"   {i+1}. {row['feature']}: {row['importance']:.3f}")
+metrics = {
+    'r2':                  round(test_r2, 3),
+    'train_r2':            round(train_r2, 3),
+    'mae':                 round(mae, 2),
+    'mae_pct':             round(mae_pct, 2),
+    'rmse':                round(rmse, 2),
+    'rmse_pct':            round(rmse_pct, 2),
+    'train_size':          int(len(X_train)),
+    'test_size':           int(len(X_test)),
+    'feature_importances': feature_importances,
+    'trained_at':          datetime.now().isoformat()
+}
+
+with open('model_metrics.json', 'w') as f:
+    json.dump(metrics, f, indent=2)
+
+print(f"\n✅ Metrics saved to model_metrics.json")
 
 # ============================================
-# PREDICT FUTURE (USING CORRECT DATAFRAME)
+# RECURSIVE FORECASTING
 # ============================================
 
 print("\n" + "="*60)
-print("GENERATING FORECAST")
+print("GENERATING RECURSIVE FORECAST")
 print("="*60)
 
 last_date = df['metric_date'].max()
 future_dates = [last_date + timedelta(days=i+1) for i in range(7)]
 
-# FIX #2: Use featured_df (which has day_of_week) instead of df
-# Calculate daily pattern from the processed dataframe
-daily_pattern = featured_df.groupby('day_of_week')['total_revenue'].mean()
-daily_pattern_pct = daily_pattern / daily_pattern.mean()
+history = df['total_revenue'].tolist()
+history_days = df['metric_date'].dt.dayofweek.tolist()
 
-print(f"\nDaily pattern based on historical data:")
-for day in range(7):
-    day_name = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day]
-    print(f"   {day_name}: {daily_pattern_pct.iloc[day]:.2f}x average")
-
-# Generate predictions
-last_7_avg = df['total_revenue'].tail(7).mean()
-print(f"\nLast 7 days average revenue: ${last_7_avg:,.2f}")
+if len(history) < 7:
+    raise ValueError(f"Need at least 7 days of history. Only {len(history)} available.")
 
 predictions = []
+
 for date in future_dates:
-    day_idx = date.weekday()
-    factor = daily_pattern_pct.iloc[day_idx]
-    # Add small random variation for realism
-    pred = last_7_avg * factor * np.random.normal(1, 0.03)
+    same_day_vals = [
+        r for d, r in zip(history_days, history) if d == date.weekday()
+    ]
+    day_avg = float(np.mean(same_day_vals)) if same_day_vals else float(np.mean(history))
+
+    feat = {
+        'day_of_week':        date.weekday(),
+        'day_of_month':       date.day,
+        'month':              date.month,
+        'is_weekend':         int(date.weekday() >= 5),
+        'prev_day_revenue':   history[-1],
+        'prev_2day_revenue':  history[-2],
+        'prev_3day_revenue':  history[-3],
+        'prev_7day_revenue':  history[-7],
+        'rolling_3day_mean':  float(np.mean(history[-3:])),
+        'rolling_7day_mean':  float(np.mean(history[-7:])),
+        'day_avg_revenue':    day_avg
+    }
+
+    X_future = pd.DataFrame([feat])[feature_cols]
+    pred = float(model.predict(X_future)[0])
     predictions.append(pred)
+
+    # Feed prediction back into history for next iteration
+    history.append(pred)
+    history_days.append(date.weekday())
 
 # Display forecast
 print("\n" + "="*60)

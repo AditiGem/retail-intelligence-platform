@@ -732,9 +732,22 @@ def display_forecast_metrics(predictions, sales):
     else:
         forecast_change = 0
     
-    mae = avg_forecast * 0.08
-    rmse = avg_forecast * 0.12
-    r2 = 0.82
+    import json, os
+
+    METRICS_PATH = 'model_metrics.json'
+    if os.path.exists(METRICS_PATH):
+        with open(METRICS_PATH) as f:
+            _m = json.load(f)
+        r2        = _m.get('r2', 0.0)
+        mae_pct   = _m.get('mae_pct', 0.0)
+        rmse_pct  = _m.get('rmse_pct', 0.0)
+        _feat_imp = _m.get('feature_importances', {})
+    else:
+        r2 = mae_pct = rmse_pct = 0.0
+        _feat_imp = {}
+
+    mae  = avg_forecast * (mae_pct  / 100)
+    rmse = avg_forecast * (rmse_pct / 100)
     
     st.markdown("### 📊 Forecast Analytics")
     
@@ -745,9 +758,9 @@ def display_forecast_metrics(predictions, sales):
     with col2:
         st.metric("📊 Avg Daily", f"{avg_forecast:.0f} units")
     with col3:
-        st.metric("📉 MAE", f"{mae:.0f} units", help="Mean Absolute Error")
+        st.metric("📉 MAE", f"{mae:.0f} units ({mae_pct:.1f}%)", help="Mean Absolute Error")
     with col4:
-        st.metric("📉 RMSE", f"{rmse:.0f} units", help="Root Mean Square Error")
+        st.metric("📉 RMSE", f"{rmse:.0f} units ({rmse_pct:.1f}%)", help="Root Mean Square Error")
     with col5:
         st.metric("🎯 R² Score", f"{r2:.2f}", help="Coefficient of determination")
     
@@ -755,13 +768,8 @@ def display_forecast_metrics(predictions, sales):
     
     st.markdown("### 🔑 Top Features Driving Forecast")
     
-    features = {
-        "Previous Day Revenue": 0.28,
-        "7-Day Rolling Average": 0.22,
-        "Day of Week": 0.18,
-        "Previous Week Revenue": 0.15,
-        "Month": 0.10,
-        "Weekend Indicator": 0.07
+    features = _feat_imp if _feat_imp else {
+        "No feature data available": 1.0
     }
     
     fig = go.Figure()
