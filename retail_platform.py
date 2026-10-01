@@ -1296,6 +1296,7 @@ PAGE_DASHBOARD = "📊 Dashboard"
 PAGE_EXPLORER = "📂 Data Explorer"
 PAGE_FILTERS = "🔧 Advanced Filters"
 PAGE_QUALITY = "📋 Data Quality"
+PAGE_SQL = "🗄️ SQL Analytics"
 PAGE_ABOUT = "ℹ️ About"
 
 DETAIL_CATEGORY = "Category Detail"
@@ -1339,7 +1340,7 @@ def go_to_dashboard():
     st.rerun()
 
 def show_breadcrumb():
-    if st.session_state.page in [PAGE_DASHBOARD, PAGE_EXPLORER, PAGE_FILTERS, PAGE_QUALITY, PAGE_ABOUT]:
+    if st.session_state.page in [PAGE_DASHBOARD, PAGE_EXPLORER, PAGE_FILTERS, PAGE_QUALITY, PAGE_SQL, PAGE_ABOUT]:
         return
     
     st.markdown('<div class="breadcrumb-container">', unsafe_allow_html=True)
@@ -1389,6 +1390,7 @@ with st.sidebar:
         ("📂 Data Explorer", PAGE_EXPLORER),
         ("🔧 Advanced Filters", PAGE_FILTERS),
         ("📋 Data Quality", PAGE_QUALITY),
+        ("🗄️ SQL Analytics", PAGE_SQL),
         ("ℹ️ About", PAGE_ABOUT)
     ]
     
@@ -1469,7 +1471,7 @@ with st.sidebar:
         st.metric("💰 Revenue", f"${sales['revenue'].sum():,.0f}")
         st.metric("🏙️ Cities", f"{sales['customer_city'].nunique()}")
     
-    if st.session_state.page not in [PAGE_DASHBOARD, PAGE_EXPLORER, PAGE_FILTERS, PAGE_QUALITY, PAGE_ABOUT]:
+    if st.session_state.page not in [PAGE_DASHBOARD, PAGE_EXPLORER, PAGE_FILTERS, PAGE_QUALITY, PAGE_SQL, PAGE_ABOUT]:
         st.markdown("---")
         if st.button("⬅️ Back to Dashboard", use_container_width=True):
             go_to_dashboard()
@@ -2207,6 +2209,28 @@ elif current_page == PAGE_QUALITY:
 # ============================================
 # ABOUT PAGE (FEATURE 10) - FIXED
 # ============================================
+
+elif current_page == PAGE_SQL:
+    st.markdown("## 🗄️ SQL Analytics Showcase")
+    st.markdown("Production-grade SQL queries powering this platform. "
+                "Each query uses JOIN, CTE, CASE, or window functions.")
+
+    import os, glob
+    sql_files = sorted(glob.glob('sql/*.sql'))
+
+    if not sql_files:
+        st.warning("No SQL files found in sql/ folder.")
+    else:
+        for path in sql_files:
+            title = os.path.basename(path).replace('.sql','').replace('_',' ').title()
+            with st.expander(f"📊 {title}"):
+                sql = open(path, encoding='utf-8').read()
+                st.code(sql, language='sql')
+                try:
+                    df = pd.read_sql(sql, get_connection())
+                    st.dataframe(df, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Query error: {e}")
 
 elif current_page == PAGE_ABOUT:
     
