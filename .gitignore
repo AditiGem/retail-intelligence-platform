@@ -1,0 +1,22 @@
+# Environment / secrets
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Outputs
+*.png
+*.csv
+*.xlsx
+model_metrics.json
+
+# OS
+.DS_Store
+Thumbs.db
