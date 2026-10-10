@@ -1,3 +1,8 @@
+-- NOTE: The sales table does not contain a customer_id column.
+-- This query segments by transaction signature
+-- (composite of customer_city + payment_method), NOT by unique
+-- customer. Do not interpret results as customer retention or RFM.
+
 WITH customer_orders AS (
     SELECT CONCAT(customer_city, '-', payment_method) AS customer_id, COUNT(*) AS order_count, SUM(revenue) AS total_spent
     FROM sales

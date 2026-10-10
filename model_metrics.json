@@ -1,0 +1,24 @@
+{
+  "r2": 0.409,
+  "train_r2": 0.929,
+  "mae": 11718.11,
+  "mae_pct": 17.11,
+  "rmse": 12073.46,
+  "rmse_pct": 17.62,
+  "train_size": 19,
+  "test_size": 5,
+  "feature_importances": {
+    "day_of_week": 0.309,
+    "is_weekend": 0.2213,
+    "day_of_month": 0.1194,
+    "rolling_7day_mean": 0.1078,
+    "day_avg_revenue": 0.0794,
+    "prev_day_revenue": 0.0676,
+    "prev_3day_revenue": 0.0579,
+    "prev_7day_revenue": 0.0159,
+    "rolling_3day_mean": 0.0128,
+    "prev_2day_revenue": 0.0082,
+    "month": 0.0005
+  },
+  "trained_at": "2026-10-10T21:58:28.571083"
+}

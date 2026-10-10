@@ -4,6 +4,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 from config import DB_CONFIG, get_connection
+import sys, io
+if sys.platform == 'win32':
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 # ============================================
 # ANALYSIS 1: SALES OVERVIEW
