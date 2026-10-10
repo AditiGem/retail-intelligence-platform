@@ -1130,7 +1130,9 @@ def display_kpi_card(value, label, icon, change=None, accent_class="accent-blue"
         change_icon = "↗" if change > 0 else "↘" if change < 0 else "→"
         change_html = f'<span class="kpi-change {change_class}">{change_icon} {abs(change):.1f}%</span>'
     
-    if "Revenue" in label or "Value" in label or "Forecast" in label:
+    if "Growth" in label:
+        formatted_value = f"{value:+.1f}%"
+    elif "Revenue" in label or "Value" in label or "Forecast" in label:
         formatted_value = f"${value:,.0f}"
     else:
         formatted_value = f"{value:,.0f}"
@@ -1560,16 +1562,15 @@ if current_page == PAGE_DASHBOARD:
     st.markdown("---")
     st.markdown('<div class="section-header"><span class="header-icon">🎯</span> Executive Dashboard</div>', unsafe_allow_html=True)
     
-    kpi_cols = st.columns(7)
+    kpi_cols = st.columns(6)
     
     kpi_data = [
-        (kpis['total_revenue'], "Total Revenue", "💰", kpis['revenue_change'], "accent-blue"),
-        (kpis['total_orders'], "Total Orders", "📦", kpis['orders_change'], "accent-green"),
-        (kpis['avg_order_value'], "Avg Order Value", "💵", None, "accent-orange"),
-        (kpis['total_units'], "Units Sold", "📊", None, "accent-purple"),
-        (kpis['total_categories'], "Categories", "📁", None, "accent-pink"),
-        (kpis['cities_covered'], "Cities Covered", "🌆", None, "accent-indigo"),
-        (kpis['forecast_revenue'], "Forecast Revenue", "🔮", None, "accent-red")
+        (kpis['total_revenue'],    "Total Revenue",   "💰", kpis['revenue_change'], "accent-blue"),
+        (kpis['total_orders'],     "Total Orders",    "📦", kpis['orders_change'],   "accent-green"),
+        (kpis['avg_order_value'],  "Avg Order Value", "💵", None,                    "accent-orange"),
+        (kpis['total_units'],      "Units Sold",      "📊", None,                    "accent-purple"),
+        (kpis['revenue_change'],   "Growth %",        "📈", None,                    "accent-indigo"),
+        (kpis['forecast_revenue'], "Forecast Revenue","🔮", None,                    "accent-red"),
     ]
     
     for idx, (value, label, icon, change, accent) in enumerate(kpi_data):
@@ -1584,7 +1585,7 @@ if current_page == PAGE_DASHBOARD:
     with col1:
         st.subheader("🏆 Top Products")
         if not filtered_sales.empty:
-            top_products = filtered_sales.groupby('product_id')['revenue'].sum().nlargest(5)
+            top_products = filtered_sales.groupby('product_id')['revenue'].sum().nlargest(10)
             product_display_names = []
             for pid in top_products.index:
                 name = product_name_map.get(pid, 'Unnamed Product')
@@ -1598,7 +1599,7 @@ if current_page == PAGE_DASHBOARD:
                 color=top_products.values,
                 color_continuous_scale='Blues'
             )
-            fig.update_layout(height=350, showlegend=False, margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(tickformat='$,.0f'))
+            fig.update_layout(height=400, showlegend=False, margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(tickformat='$,.0f'))
             st.plotly_chart(fig, use_container_width=True, key="top_products_chart")
             
             insight, recommendation = generate_top_products_insight(top_products, product_name_map)
@@ -1645,11 +1646,29 @@ if current_page == PAGE_DASHBOARD:
         st.subheader("📈 Daily Revenue Trend")
         if not filtered_sales.empty:
             daily_trend = filtered_sales.groupby('sale_date')['revenue'].sum().reset_index()
-            fig = px.line(
-                daily_trend, x='sale_date', y='revenue',
-                labels={'sale_date': '', 'revenue': 'Revenue ($)'}, markers=False
+            daily_trend['growth'] = daily_trend['revenue'].pct_change() * 100
+
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=daily_trend['sale_date'],
+                y=daily_trend['revenue'],
+                name='Revenue',
+                marker_color='#3b82f6'
+            ))
+            fig.add_trace(go.Scatter(
+                x=daily_trend['sale_date'],
+                y=daily_trend['growth'],
+                name='Growth %',
+                yaxis='y2',
+                line=dict(color='#10b981', width=2)
+            ))
+            fig.update_layout(
+                height=350,
+                margin=dict(l=0, r=0, t=0, b=0),
+                yaxis=dict(title='Revenue ($)', tickformat='$,.0f'),
+                yaxis2=dict(title='Growth %', overlaying='y', side='right', showgrid=False),
+                legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='center', x=0.5)
             )
-            fig.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0), xaxis=dict(tickformat='%b %d'), yaxis=dict(tickformat='$,.0f'))
             st.plotly_chart(fig, use_container_width=True, key="daily_trend_chart")
             
             insight, recommendation = generate_trend_insight(daily_trend)
