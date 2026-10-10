@@ -1,7 +1,8 @@
-# Environment / secrets
+# Secrets
 .env
-.env.local
+.env.*
 *.env
+.streamlit/secrets.toml
 
 # Python
 __pycache__/
@@ -15,7 +16,7 @@ env/
 *.png
 *.csv
 *.xlsx
-model_metrics.json
+model_metrics.json.bak
 
 # OS
 .DS_Store
