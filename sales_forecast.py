@@ -187,6 +187,7 @@ metrics = {
     'train_size':          int(len(X_train)),
     'test_size':           int(len(X_test)),
     'feature_importances': feature_importances,
+    'evaluation_note':     'Evaluated on 5-day chronological test split (19 train, 5 test days). Recursive forecasting architecture.',
     'trained_at':          datetime.now().isoformat()
 }
 
@@ -242,22 +243,28 @@ for date in future_dates:
     history.append(pred)
     history_days.append(date.weekday())
 
+# Compute empirical average selling price (ASP) from historical data
+total_hist_revenue = df['total_revenue'].sum()
+total_hist_units = df['total_units_sold'].sum()
+avg_selling_price = float(total_hist_revenue / total_hist_units) if total_hist_units > 0 else 157.19
+
 # Display forecast
 print("\n" + "="*60)
-print("7-DAY SALES FORECAST")
+print("7-DAY SALES FORECAST (Point Predictions)")
 print("="*60)
-print(f"{'Date':15} {'Day':10} {'Forecast':15} {'Range':20}")
-print("-" * 65)
+print(f"{'Date':15} {'Day':10} {'Forecast Rev':15} {'Est Units':12}")
+print("-" * 60)
 
 total_forecast = 0
 for i, date in enumerate(future_dates):
     date_str = date.strftime('%Y-%m-%d')
     day_name = date.strftime('%A')
     pred = predictions[i]
+    est_units = int(round(pred / avg_selling_price))
     total_forecast += pred
-    print(f"{date_str:15} {day_name:10} ${pred:12,.2f}   ${pred*0.85:,.2f} - ${pred*1.15:,.2f}")
+    print(f"{date_str:15} {day_name:10} ${pred:12,.2f}   {est_units:8d} units")
 
-print("-" * 65)
+print("-" * 60)
 print(f"{'TOTAL':15} {'':10} ${total_forecast:12,.2f}")
 print(f"{'AVERAGE':15} {'':10} ${total_forecast/7:12,.2f}")
 
@@ -295,23 +302,25 @@ print("\nSaving predictions to database...")
 conn = get_connection()
 cursor = conn.cursor()
 
-for i, date in enumerate(future_dates):
-    predicted_qty = int(predictions[i] / 100)  # Convert revenue to quantity
-    sql = """
-    INSERT INTO sales_predictions 
-    (product_id, prediction_date, predicted_quantity, confidence_lower, confidence_upper, model_version)
-    VALUES (0, %s, %s, %s, %s, 'RandomForest_Final')
-    ON DUPLICATE KEY UPDATE
-    predicted_quantity = VALUES(predicted_quantity),
-    confidence_lower = VALUES(confidence_lower),
-    confidence_upper = VALUES(confidence_upper)
-    """
-    cursor.execute(sql, (date, predicted_qty, int(predicted_qty*0.85), int(predicted_qty*1.15)))
+try:
+    # Remove older predictions for product_id=0 to prevent duplicate accumulation
+    cursor.execute("DELETE FROM sales_predictions WHERE product_id = 0")
+    
+    for i, date in enumerate(future_dates):
+        # Convert forecasted revenue to estimated units using verified empirical ASP
+        predicted_qty = int(round(predictions[i] / avg_selling_price))
+        sql = """
+        INSERT INTO sales_predictions 
+        (product_id, prediction_date, predicted_quantity, confidence_lower, confidence_upper, model_version)
+        VALUES (0, %s, %s, NULL, NULL, 'RandomForest_Final')
+        """
+        cursor.execute(sql, (date, predicted_qty))
 
-conn.commit()
-cursor.close()
-conn.close()
-print(f"   Saved {len(future_dates)} predictions to database")
+    conn.commit()
+    print(f"   Saved {len(future_dates)} predictions to database")
+finally:
+    cursor.close()
+    conn.close()
 
 # ============================================
 # CREATE VISUALIZATION
@@ -324,25 +333,20 @@ plt.figure(figsize=(14, 7))
 # Plot historical data (last 30 days)
 historical_plot = df.tail(30)
 plt.plot(historical_plot['metric_date'], historical_plot['total_revenue'], 
-         'b-o', label='Historical Sales', linewidth=2, markersize=6)
+         'b-o', label='Historical Sales (Actual)', linewidth=2, markersize=6)
 
-# Plot forecast
-plt.plot(future_dates, predictions, 'r--s', label='7-Day Forecast', linewidth=2, markersize=8)
-
-# Add confidence band
-upper_bound = [p * 1.15 for p in predictions]
-lower_bound = [p * 0.85 for p in predictions]
-plt.fill_between(future_dates, lower_bound, upper_bound, alpha=0.2, color='red', 
-                  label='85% Confidence Range')
+# Plot forecast point predictions (no artificial confidence bands)
+plt.plot(future_dates, predictions, 'r--s', label='7-Day Forecast (Predicted)', linewidth=2, markersize=8)
 
 plt.xlabel('Date', fontsize=12)
 plt.ylabel('Revenue ($)', fontsize=12)
-plt.title('Sales Forecast - Next 7 Days', fontsize=14, fontweight='bold')
+plt.title('Sales Forecast - Next 7 Days (Point Predictions)', fontsize=14, fontweight='bold')
 plt.legend(loc='best')
 plt.xticks(rotation=45)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig('sales_forecast.png', dpi=150)
+plt.close()
 print("   Chart saved: sales_forecast.png")
 
 # ============================================

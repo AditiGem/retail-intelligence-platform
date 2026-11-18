@@ -5,7 +5,7 @@ SELECT
     SUM(s.quantity_sold)             AS units_sold,
     ROUND(AVG(s.revenue), 2)         AS avg_order_value,
     ROUND(
-        SUM(s.revenue) * 100.0 / (SELECT SUM(revenue) FROM sales), 2
+        SUM(s.revenue) * 100.0 / NULLIF((SELECT SUM(revenue) FROM sales), 0), 2
     ) AS revenue_share_pct
 FROM products p
 JOIN sales s ON p.product_id = s.product_id

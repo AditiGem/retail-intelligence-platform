@@ -20,5 +20,6 @@
     "prev_2day_revenue": 0.0082,
     "month": 0.0005
   },
-  "trained_at": "2026-10-10T21:58:28.571083"
+  "evaluation_note": "Evaluated on 5-day chronological test split (19 train, 5 test days). Recursive forecasting architecture.",
+  "trained_at": "2026-11-18T19:54:44.006413"
 }

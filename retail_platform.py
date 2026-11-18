@@ -300,16 +300,14 @@ st.markdown("""
 
 @st.cache_data(ttl=3600)
 def load_data():
-    """Load all data from database"""
+    """Load all data from database with guaranteed connection cleanup."""
+    conn = None
     try:
         conn = get_connection()
-        
         products = pd.read_sql("SELECT * FROM products", conn)
         sales = pd.read_sql("SELECT * FROM sales", conn)
         daily = pd.read_sql("SELECT * FROM daily_metrics ORDER BY metric_date", conn)
         predictions = pd.read_sql("SELECT * FROM sales_predictions ORDER BY prediction_date", conn)
-        
-        conn.close()
         
         sales['sale_date'] = pd.to_datetime(sales['sale_date'])
         daily['metric_date'] = pd.to_datetime(daily['metric_date'])
@@ -319,9 +317,25 @@ def load_data():
         
         return products, sales, daily, predictions
         
-    except mysql.connector.Error as err:
-        st.error(f"Database Connection Error: {err}")
+    except Exception as err:
+        st.error(f"Database Error: Unable to query retail database. Please verify MySQL service and .env configuration.")
         return None, None, None, None
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+def get_latest_forecast(predictions, days=7):
+    """Safely retrieve the latest non-duplicated forecast slice."""
+    if predictions is None or predictions.empty:
+        return pd.DataFrame()
+    preds = predictions[predictions['product_id'] == 0]
+    if 'created_at' in preds.columns:
+        preds = preds.sort_values('created_at', ascending=False)
+    latest = preds.drop_duplicates(subset=['prediction_date']).sort_values('prediction_date')
+    return latest.head(days)
 
 def create_master_dataframe(sales, products):
     """Create a master dataframe for efficient searching"""
@@ -721,7 +735,7 @@ def display_forecast_metrics(predictions, sales):
     if predictions is None or predictions.empty:
         return
     
-    forecast_data = predictions[predictions['product_id'] == 0].head(7)
+    forecast_data = get_latest_forecast(predictions, 7)
     if forecast_data.empty:
         return
     
@@ -813,8 +827,7 @@ def display_forecast_metrics(predictions, sales):
     else:
         st.markdown(f"📉 **Significant Decline Expected**: Sales are forecasted to decrease by {abs(forecast_change):.1f}% compared to the last 7 days.")
     
-    confidence_pct = 85
-    st.markdown(f"🎯 **Confidence Level**: The model is {confidence_pct}% confident that daily sales will range between **{forecast_data['confidence_lower'].mean():.0f}** and **{forecast_data['confidence_upper'].mean():.0f}** units per day.")
+    st.info("ℹ️ **Model Evaluation Notice**: The Random Forest regressor was trained on 19 daily samples and evaluated on a chronological 5-day test window (Test R²: 0.41, MAE: 17.1%). Point predictions are reported without unsupported statistical prediction intervals.")
     
     best_idx = forecast_data['predicted_quantity'].idxmax()
     worst_idx = forecast_data['predicted_quantity'].idxmin()
@@ -989,18 +1002,19 @@ def display_data_quality(quality):
 
 def calculate_kpis(sales, products, predictions):
     kpis = {}
-    kpis['total_revenue'] = sales['revenue'].sum() if not sales.empty else 0
-    kpis['total_orders'] = len(sales)
-    kpis['avg_order_value'] = sales['revenue'].mean() if not sales.empty else 0
+    kpis['total_revenue'] = sales['revenue'].sum() if not sales.empty else 0.0
+    kpis['total_orders'] = len(sales) if not sales.empty else 0
+    kpis['avg_order_value'] = (sales['revenue'].sum() / len(sales)) if (not sales.empty and len(sales) > 0) else 0.0
     kpis['total_units'] = sales['quantity_sold'].sum() if not sales.empty else 0
-    kpis['total_categories'] = products['category'].nunique() if products is not None else 0
+    kpis['total_categories'] = products['category'].nunique() if products is not None and not products.empty else 0
     kpis['cities_covered'] = sales['customer_city'].nunique() if not sales.empty else 0
     
     if predictions is not None and not predictions.empty:
-        forecast_data = predictions[predictions['product_id'] == 0].head(7)
-        kpis['forecast_revenue'] = forecast_data['predicted_quantity'].sum() * 100
+        forecast_data = get_latest_forecast(predictions, 7)
+        asp = (sales['revenue'].sum() / sales['quantity_sold'].sum()) if (not sales.empty and sales['quantity_sold'].sum() > 0) else 157.19
+        kpis['forecast_revenue'] = forecast_data['predicted_quantity'].sum() * asp
     else:
-        kpis['forecast_revenue'] = 0
+        kpis['forecast_revenue'] = 0.0
     
     if not sales.empty and len(sales) >= 14:
         sales_sorted = sales.sort_values('sale_date')
@@ -1081,7 +1095,7 @@ def generate_executive_summary(sales, products, predictions, kpis):
         summary['opportunities'].append(f"💡 Revenue declined {abs(kpis['revenue_change']):.1f}% - opportunity to optimize")
     
     if predictions is not None and not predictions.empty:
-        forecast_data = predictions[predictions['product_id'] == 0].head(7)
+        forecast_data = get_latest_forecast(predictions, 7)
         if not forecast_data.empty:
             total_forecast = forecast_data['predicted_quantity'].sum()
             avg_forecast = total_forecast / 7
@@ -1712,7 +1726,7 @@ if current_page == PAGE_DASHBOARD:
     st.subheader("🔮 Sales Forecast")
     
     if predictions is not None and not predictions.empty:
-        forecast_data = predictions[predictions['product_id'] == 0].head(7)
+        forecast_data = get_latest_forecast(predictions, 7)
         
         if not forecast_data.empty:
             display_forecast_metrics(predictions, filtered_sales)
@@ -1726,10 +1740,7 @@ if current_page == PAGE_DASHBOARD:
                 
                 forecast_table = pd.DataFrame({
                     'Date': forecast_data['prediction_date'].dt.strftime('%A, %b %d'),
-                    'Units': forecast_data['predicted_quantity'],
-                    'Lower': forecast_data['confidence_lower'],
-                    'Upper': forecast_data['confidence_upper'],
-                    'Confidence': ['85%'] * len(forecast_data)
+                    'Units': forecast_data['predicted_quantity']
                 })
                 
                 forecast_table['Growth'] = forecast_table['Units'].pct_change().fillna(0) * 100
@@ -1760,14 +1771,13 @@ if current_page == PAGE_DASHBOARD:
                 forecast_table['Recommendation'] = forecast_table.apply(get_day_recommendation, axis=1)
                 
                 st.dataframe(
-                    forecast_table[['Date', 'Units', 'Growth', 'Confidence', 'Recommendation']],
+                    forecast_table[['Date', 'Units', 'Growth', 'Recommendation']],
                     use_container_width=True,
                     hide_index=True,
                     column_config={
                         "Date": st.column_config.TextColumn("Date"),
-                        "Units": st.column_config.NumberColumn("Predicted Units", format="%d"),
+                        "Units": st.column_config.NumberColumn("Estimated Units", format="%d"),
                         "Growth": st.column_config.TextColumn("Growth"),
-                        "Confidence": st.column_config.TextColumn("Confidence"),
                         "Recommendation": st.column_config.TextColumn("Action")
                     }
                 )
@@ -1836,26 +1846,6 @@ if current_page == PAGE_DASHBOARD:
                     marker=dict(size=10, color='#3B82F6', symbol='circle')
                 ))
                 
-                fig.add_trace(go.Scatter(
-                    x=forecast_data['prediction_date'],
-                    y=forecast_data['confidence_upper'],
-                    mode='lines',
-                    name='Upper Bound',
-                    line=dict(color='#10B981', dash='dash', width=1),
-                    showlegend=True
-                ))
-                
-                fig.add_trace(go.Scatter(
-                    x=forecast_data['prediction_date'],
-                    y=forecast_data['confidence_lower'],
-                    mode='lines',
-                    name='Lower Bound',
-                    line=dict(color='#EF4444', dash='dash', width=1),
-                    fill='tonexty',
-                    fillcolor='rgba(59, 130, 246, 0.1)',
-                    showlegend=True
-                ))
-                
                 if not filtered_sales.empty:
                     hist_dates = filtered_sales['sale_date'].tail(14)
                     hist_values = filtered_sales['quantity_sold'].tail(14)
@@ -1909,7 +1899,7 @@ if current_page == PAGE_DASHBOARD:
                 )
                 st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
                 
-                st.caption("🔵 **85% Confidence Interval** - Actual sales are expected to fall within the shaded area")
+                st.caption("📈 **Point Forecast**: Recursive multi-step prediction from Random Forest Regressor without artificial intervals.")
             
             st.markdown("---")
             
@@ -2253,11 +2243,19 @@ elif current_page == PAGE_SQL:
             with st.expander(f"📊 {title}"):
                 sql = open(path, encoding='utf-8').read()
                 st.code(sql, language='sql')
+                conn = None
                 try:
-                    df = pd.read_sql(sql, get_connection())
+                    conn = get_connection()
+                    df = pd.read_sql(sql, conn)
                     st.dataframe(df, use_container_width=True)
                 except Exception as e:
-                    st.error(f"Query error: {e}")
+                    st.error(f"Query execution error: {e}")
+                finally:
+                    if conn is not None:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
 
 elif current_page == PAGE_ABOUT:
     
@@ -2428,21 +2426,21 @@ elif current_page == PAGE_ABOUT:
     
     with col2:
         st.markdown("""
-        **Performance Metrics:**
+        **Performance Metrics (Actual Test Split):**
         
         | Metric | Value |
-        |--------|-------|
-        | R² Score | 0.82 |
-        | MAE | ±8% |
-        | RMSE | ±12% |
-        | Confidence | 85% |
+        |---|---|
+        | Train R² | 0.93 |
+        | Test R² | 0.41 |
+        | Test MAE | $11,718 (17.1%) |
+        | Test RMSE | $12,073 (17.6%) |
+        | Test Window | 5 Chronological Days |
         
         **Model Purpose:**
-        Predicts daily sales volume for the next 7 days to help with:
-        - Inventory planning
-        - Staff scheduling
-        - Marketing campaigns
-        - Revenue forecasting
+        Predicts daily sales revenue recursively for the next 7 days to assist with:
+        - Demand trend detection
+        - Staff scheduling direction
+        - Baseline revenue planning
         """)
     
     st.markdown("---")
@@ -2458,7 +2456,7 @@ elif current_page == PAGE_ABOUT:
     with col1:
         st.markdown("""
         **📊 Dashboard**
-        - Executive KPI Dashboard (7 KPIs)
+        - Executive KPI Dashboard (6 Core KPIs)
         - Executive Business Summary
         - Top Products Chart with Insights
         - Category Revenue Chart with Insights
@@ -2525,11 +2523,11 @@ elif current_page == PAGE_ABOUT:
     
     with col3:
         st.metric(
-            "🎯 Forecast Accuracy",
-            "85%",
-            "Confidence level"
+            "🎯 Forecast Validation",
+            "0.41 R²",
+            "5-day chronological test"
         )
-        st.caption("Better inventory and staff planning")
+        st.caption("Out-of-sample recursive evaluation")
     
     st.markdown("---")
     

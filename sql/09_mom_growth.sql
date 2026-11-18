@@ -15,8 +15,9 @@ SELECT
     month,
     revenue,
     prev_revenue,
-    ROUND((revenue - prev_revenue) / prev_revenue * 100, 2) AS mom_growth_pct,
+    ROUND((revenue - prev_revenue) / NULLIF(prev_revenue, 0) * 100, 2) AS mom_growth_pct,
     CASE
+        WHEN prev_revenue IS NULL THEN 'Baseline'
         WHEN revenue > prev_revenue * 1.10 THEN 'Strong Growth'
         WHEN revenue > prev_revenue        THEN 'Growth'
         WHEN revenue = prev_revenue        THEN 'Flat'

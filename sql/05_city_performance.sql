@@ -1,10 +1,10 @@
 SELECT
     customer_city,
-    COUNT(*)                          AS orders,
-    COUNT(DISTINCT sale_id)           AS unique_customers,
-    ROUND(SUM(revenue), 2)            AS total_revenue,
-    ROUND(AVG(revenue), 2)            AS aov,
-    ROUND(SUM(revenue) / COUNT(DISTINCT sale_id), 2) AS revenue_per_customer
+    COUNT(*)                                              AS total_orders,
+    SUM(quantity_sold)                                    AS total_units,
+    ROUND(SUM(revenue), 2)                                AS total_revenue,
+    ROUND(AVG(revenue), 2)                                AS avg_order_value,
+    ROUND(SUM(revenue) / NULLIF(SUM(quantity_sold), 0), 2) AS avg_revenue_per_unit
 FROM sales
 GROUP BY customer_city
 ORDER BY total_revenue DESC;

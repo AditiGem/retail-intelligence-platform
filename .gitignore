@@ -1,8 +1,12 @@
-# Secrets
+# Secrets & Sensitive Artifacts
 .env
 .env.*
 *.env
 .streamlit/secrets.toml
+replacements*.txt
+*.bak
+*.backup
+.git_backup*/
 
 # Python
 __pycache__/
@@ -11,9 +15,11 @@ __pycache__/
 .venv/
 venv/
 env/
+*.log
 
-# Outputs
+# Generated Outputs
 *.png
+!screenshots/*.png
 *.csv
 *.xlsx
 model_metrics.json.bak

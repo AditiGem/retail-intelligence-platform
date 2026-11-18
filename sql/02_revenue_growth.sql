@@ -10,7 +10,7 @@ SELECT
     LAG(revenue) OVER (ORDER BY month) AS prev_month,
     ROUND(
         (revenue - LAG(revenue) OVER (ORDER BY month))
-        / LAG(revenue) OVER (ORDER BY month) * 100, 2
+        / NULLIF(LAG(revenue) OVER (ORDER BY month), 0) * 100, 2
     ) AS growth_pct
 FROM monthly
 ORDER BY month;

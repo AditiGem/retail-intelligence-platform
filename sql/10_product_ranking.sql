@@ -15,6 +15,6 @@ SELECT
     units,
     RANK()       OVER (PARTITION BY category ORDER BY revenue DESC) AS rank_in_category,
     DENSE_RANK() OVER (PARTITION BY category ORDER BY revenue DESC) AS dense_rank_in_category,
-    ROUND(revenue * 100.0 / SUM(revenue) OVER (PARTITION BY category), 2) AS pct_of_category
+    ROUND(revenue * 100.0 / NULLIF(SUM(revenue) OVER (PARTITION BY category), 0), 2) AS pct_of_category
 FROM product_revenue
 ORDER BY category, rank_in_category;
