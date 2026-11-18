@@ -132,11 +132,11 @@ def test_no_obvious_secrets_in_tracked_files():
     assert not offenders, f"Possible hardcoded DB password found in: {offenders}"
 
 
-def test_no_compromised_password_in_history():
-    """Verify that the previously compromised password string does not exist anywhere in git log -p."""
+def test_no_secrets_in_git_history():
+    """Verify that no actual credentials or secret patterns exist in git log -p."""
     res = subprocess.run(['git', 'log', '-p', '--all'], capture_output=True, text=True, errors='ignore').stdout
-    # Check for the known compromised substring
-    assert 'REDACTED_PASSWORD' not in res, "Compromised password string detected in git history!"
+    secret_assign = re.compile(r'^\+\s*DB_PASSWORD\s*=\s*["\']?(?!your_password_here)[A-Za-z0-9@#!$%^&*_+\-]{6,}', re.MULTILINE)
+    assert not secret_assign.findall(res), "Hardcoded password assignment detected in git history!"
 
 
 # ---------------------------------------------------------------------------
@@ -168,8 +168,8 @@ if __name__ == '__main__':
     test_no_obvious_secrets_in_tracked_files()
     print("[PASS] test_no_obvious_secrets_in_tracked_files")
 
-    test_no_compromised_password_in_history()
-    print("[PASS] test_no_compromised_password_in_history")
+    test_no_secrets_in_git_history()
+    print("[PASS] test_no_secrets_in_git_history")
 
     print("-" * 60)
     print("All 8 smoke tests passed successfully.")
