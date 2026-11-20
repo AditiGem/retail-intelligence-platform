@@ -154,25 +154,24 @@ The model produces point forecasts without claiming unsupported statistical pred
 
 ## 📈 Dashboard Screenshots
 
-### Executive Dashboard
 
-<!-- Add your actual screenshot here -->
-![Executive Dashboard](screenshots/executive_dashboard.png)
+### 1. Top Products Analysis
+![Top Products](top_products.png)
 
-### Product and Category Analysis
+### 2. Category Revenue Analysis
+![Category Revenue](category_revenue.png)
 
-<!-- Add your actual screenshot here -->
-![Product and Category Analysis](screenshots/product_analysis.png)
+### 3. City Revenue Analysis
+![City Revenue](city_revenue.png)
 
-### Sales Trend Analysis
+### 4. Daily Revenue Trend
+![Daily Revenue](daily_revenue.png)
 
-<!-- Add your actual screenshot here -->
-![Sales Trend Analysis](screenshots/sales_trends.png)
+### 5. Sales Forecasting
+![Sales Forecast](sales_forecast.png)
 
-### Sales Forecasting
-
-<!-- Add your actual screenshot here -->
-![Sales Forecasting](screenshots/sales_forecast.png)
+### 6. Payment Methods Analysis
+![Payment Methods](payment_methods.png)
 
 ## 📂 Project Structure
 
