@@ -1,6 +1,6 @@
 # 📊 Retail Intelligence Platform
 
-An end-to-end retail analytics and forecasting platform built using **Python, MySQL, SQL, Machine Learning, and Streamlit**. The platform transforms retail sales data into meaningful business insights through data processing, SQL analytics, interactive dashboards, and sales forecasting.
+An end-to-end retail analytics and sales forecasting platform built using **Python, MySQL, SQL, Machine Learning, and Streamlit**. The platform transforms retail sales data into meaningful business insights through data processing, analytical queries, interactive visualizations, and sales forecasting.
 
 **GitHub Repository:** [Retail Intelligence Platform](https://github.com/AditiGem/retail-intelligence-platform)
 
@@ -8,21 +8,21 @@ An end-to-end retail analytics and forecasting platform built using **Python, My
 
 ## 📌 Project Overview
 
-Retail businesses generate large amounts of sales data across products, categories, cities, and transactions. Analyzing this data effectively helps businesses understand sales performance, identify profitable products, monitor trends, and make informed decisions.
+Retail businesses generate large amounts of data across products, categories, cities, and transactions. Analyzing this data helps businesses understand sales performance, identify top-performing products, monitor revenue trends, and make informed decisions.
 
-The Retail Intelligence Platform provides an integrated solution for analyzing retail data and generating actionable business insights.
+The Retail Intelligence Platform provides an integrated analytics solution using Python for data processing, MySQL for database management, SQL for business analysis, and Machine Learning for sales forecasting.
 
-The project combines a Python-based data processing workflow, MySQL database, analytical SQL queries, a machine learning forecasting model, and an interactive Streamlit dashboard.
+An interactive Streamlit dashboard brings these components together and presents the results through KPIs, charts, filters, and forecasting insights.
 
 ## 🎯 Project Objectives
 
 - Analyze overall retail sales performance.
-- Track important business KPIs such as revenue, orders, average order value, and units sold.
+- Monitor important business KPIs.
 - Identify top-performing products and categories.
-- Analyze revenue distribution across different cities.
+- Analyze city-wise revenue distribution.
 - Understand daily and monthly sales trends.
 - Forecast future sales using machine learning.
-- Present business insights through an interactive dashboard.
+- Present actionable insights through an interactive dashboard.
 
 ## 🛠️ Technology Stack
 
@@ -32,22 +32,22 @@ The project combines a Python-based data processing workflow, MySQL database, an
 | Database | MySQL 8.0 |
 | Data Processing | Pandas, NumPy |
 | Machine Learning | Scikit-learn |
-| Visualization | Plotly, Matplotlib |
+| Data Visualization | Plotly, Matplotlib |
 | Dashboard | Streamlit |
 | Database Connectivity | mysql-connector-python |
-| Configuration | python-dotenv |
+| Environment Management | python-dotenv |
 | Version Control | Git, GitHub |
 
 ## 🏗️ Project Architecture
 
-The platform follows a data analytics workflow:
+The platform follows an end-to-end data analytics workflow:
 
 1. **Data Source:** Retail sales data is used as the input.
 2. **ETL Pipeline:** Python processes, cleans, and prepares the data.
-3. **Database Storage:** Processed data is stored and accessed through MySQL.
+3. **Database:** Processed data is stored and accessed through MySQL.
 4. **SQL Analytics:** Analytical queries extract business insights.
-5. **Machine Learning:** A Random Forest regression model forecasts future sales.
-6. **Visualization:** Streamlit presents KPIs, charts, filters, and forecasting results.
+5. **Machine Learning:** A Random Forest Regression model forecasts future sales.
+6. **Dashboard:** Streamlit presents KPIs, visualizations, and forecasting results.
 
 ```text
              Retail Sales Data
@@ -78,9 +78,8 @@ The platform follows a data analytics workflow:
 
 ### 1. Executive Dashboard
 
-An interactive dashboard that provides an overview of retail business performance.
+An interactive dashboard providing an overview of retail business performance through six key performance indicators:
 
-**Key Performance Indicators:**
 - Total Revenue
 - Total Orders
 - Average Order Value (AOV)
@@ -106,12 +105,12 @@ An interactive dashboard that provides an overview of retail business performanc
 ### 4. Geographic Analytics
 
 - City-wise revenue analysis.
-- Comparison of business performance across locations.
+- Comparison of sales performance across locations.
 - Identification of top-performing cities.
 
 ### 5. SQL Analytics
 
-The project includes 10 SQL analytical queries using aggregations, Common Table Expressions (CTEs), window functions, ranking, and other SQL techniques.
+The project includes 10 analytical SQL queries demonstrating practical SQL concepts such as aggregations, Common Table Expressions (CTEs), window functions, ranking, and data analysis.
 
 | No. | SQL Analysis |
 |---|---|
@@ -128,9 +127,10 @@ The project includes 10 SQL analytical queries using aggregations, Common Table 
 
 ### 6. Sales Forecasting
 
-A Random Forest Regression model is implemented to predict future sales.
+A Random Forest Regression model is implemented to predict future sales using historical sales patterns and time-based features.
 
 **Forecasting methodology:**
+
 - Lag-based feature engineering.
 - Rolling statistical features.
 - Time-based features such as day of the week and month.
@@ -138,7 +138,7 @@ A Random Forest Regression model is implemented to predict future sales.
 - Recursive multi-step forecasting.
 - Model evaluation using R², MAE, and RMSE.
 
-**Reported model evaluation:**
+**Model Evaluation Results**
 
 | Metric | Result |
 |---|---:|
@@ -148,30 +148,35 @@ A Random Forest Regression model is implemented to predict future sales.
 | MAE | 66 units (17.1%) |
 | RMSE | 68 units (17.6%) |
 
-The model produces point forecasts without claiming unsupported statistical prediction intervals.
+The model generates point forecasts without claiming unsupported statistical prediction intervals.
 
-*Note: The evaluation uses a relatively small dataset. The reported performance should be interpreted accordingly.*
+*Note: The model was evaluated on a limited dataset. Its performance should be interpreted with this limitation in mind.*
 
-## 📈 Dashboard Screenshots
+---
 
+## 📸 Dashboard Screenshots
 
-### 1. Top Products Analysis
+### Product Performance Analysis
+
+Explore top-performing products and compare their revenue contribution.
+
 ![Top Products](top_products.png)
 
-### 2. Category Revenue Analysis
+### Category Revenue Analysis
+
+Understand revenue distribution across different product categories.
+
 ![Category Revenue](category_revenue.png)
 
-### 3. City Revenue Analysis
-![City Revenue](city_revenue.png)
+### Sales Forecasting
 
-### 4. Daily Revenue Trend
-![Daily Revenue](daily_revenue.png)
+Explore future sales predictions, model evaluation metrics, and important forecasting features.
 
-### 5. Sales Forecasting
 ![Sales Forecast](sales_forecast.png)
 
-### 6. Payment Methods Analysis
-![Payment Methods](payment_methods.png)
+*Additional visualizations for city-wise revenue, daily revenue trends, and payment methods are available as PNG files in the repository.*
+
+---
 
 ## 📂 Project Structure
 
@@ -199,6 +204,14 @@ retail-intelligence-platform/
 ├── tests/
 │
 ├── screenshots/
+│   └── README.md
+│
+├── category_revenue.png
+├── city_revenue.png
+├── daily_revenue.png
+├── payment_methods.png
+├── sales_forecast.png
+├── top_products.png
 │
 ├── .env.example
 ├── .gitignore
@@ -206,7 +219,7 @@ retail-intelligence-platform/
 └── README.md
 ```
 
-*The local `.env`, virtual environment, and other private configuration files are intentionally excluded from version control.*
+*Private configuration files and the local virtual environment are excluded from version control.*
 
 ## ⚙️ Installation and Setup
 
@@ -219,7 +232,7 @@ Make sure the following are installed:
 - Git
 - pip
 
-### Step 1: Clone the repository
+### Step 1: Clone the Repository
 
 ```bash
 git clone https://github.com/AditiGem/retail-intelligence-platform.git
@@ -231,7 +244,7 @@ Navigate into the project directory:
 cd retail-intelligence-platform
 ```
 
-### Step 2: Create a virtual environment
+### Step 2: Create a Virtual Environment
 
 ```bash
 python -m venv .venv
@@ -243,7 +256,7 @@ Activate it on Windows:
 .venv\Scripts\activate
 ```
 
-### Step 3: Install dependencies
+### Step 3: Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -251,19 +264,19 @@ pip install -r requirements.txt
 
 ### Step 4: Configure MySQL
 
-Create the project database in MySQL:
+Create the project database:
 
 ```sql
 CREATE DATABASE retail_intelligence;
 ```
 
-Import or prepare the required retail dataset and tables according to the project's SQL queries and Python code.
+Prepare or import the required retail dataset and database tables according to the project's pipeline and SQL queries.
 
-### Step 5: Configure environment variables
+### Step 5: Configure Environment Variables
 
 Create a local `.env` file in the project root using `.env.example` as a reference.
 
-Example:
+Example configuration:
 
 ```env
 DB_HOST=localhost
@@ -275,9 +288,9 @@ DB_PASSWORD=your_database_password
 
 Replace the example values with your own MySQL credentials.
 
-**Important:** Never upload your actual `.env` file or database passwords to GitHub.
+**Security Note:** Never upload your actual `.env` file, database passwords, or private credentials to GitHub.
 
-### Step 6: Run the application
+### Step 6: Run the Application
 
 Start the Streamlit dashboard:
 
@@ -285,7 +298,7 @@ Start the Streamlit dashboard:
 streamlit run retail_platform.py
 ```
 
-Open the local URL displayed in your terminal, usually:
+Open the local URL displayed in the terminal, usually:
 
 ```text
 http://localhost:8501
@@ -299,7 +312,7 @@ Run the project's smoke tests:
 python -m pytest tests/smoke_test.py -v
 ```
 
-Compile Python files to check for syntax errors:
+Check Python files for syntax errors:
 
 ```bash
 python -m compileall -q .
@@ -307,11 +320,11 @@ python -m compileall -q .
 
 ## 📊 Business Value
 
-The platform demonstrates how retail transaction data can be transformed into business insights.
+The platform demonstrates how raw retail data can be transformed into meaningful business insights.
 
-It helps users:
+It helps businesses:
 
-- Monitor key business performance indicators.
+- Monitor important performance indicators.
 - Identify high-revenue products and categories.
 - Understand geographic sales distribution.
 - Analyze historical revenue trends.
@@ -321,18 +334,18 @@ It helps users:
 ## ⚠️ Limitations
 
 - Forecasting performance is based on a limited historical dataset.
-- The model's test evaluation uses only five daily observations.
+- Model evaluation uses only five daily test observations.
 - Forecasts are estimates and should not be treated as guaranteed future sales.
-- Analytical results depend on the completeness and quality of the source data.
+- Analytical results depend on the completeness and quality of source data.
 - Customer-level analysis is limited by the availability of reliable customer identifiers.
 
 ## 🚀 Future Improvements
 
-- Train forecasting models on a larger historical dataset.
+- Train forecasting models using a larger historical dataset.
 - Evaluate additional forecasting algorithms.
 - Integrate automated data refresh workflows.
 - Improve model performance through additional feature engineering.
-- Add more advanced customer segmentation when reliable customer identifiers are available.
+- Introduce customer segmentation when reliable customer identifiers are available.
 - Deploy the dashboard to a cloud platform.
 
 ## 👩‍💻 Author
@@ -348,4 +361,3 @@ B.Tech Computer Science and Engineering
 ---
 
 ⭐ If you find this project useful, consider giving the repository a star!
-
